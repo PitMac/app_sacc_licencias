@@ -1,4 +1,5 @@
 import 'package:app_sacc_licencias/providers/api_provider.dart';
+import 'package:app_sacc_licencias/providers/auth_provider.dart';
 import 'package:app_sacc_licencias/providers/loading_provider.dart';
 import 'package:app_sacc_licencias/utils/colors.dart';
 import 'package:app_sacc_licencias/widgets/alert_helper_widget.dart';
@@ -15,6 +16,7 @@ class LicenciasWeb extends HookWidget {
   Widget build(BuildContext context) {
     final apiProvider = ApiProvider();
     final loadingProvider = context.read<LoadingProvider>();
+    final authProvider = context.read<AuthProvider>();
     final arrLicencias = useState([]);
 
     loadLicenciasWeb() async {
@@ -45,7 +47,10 @@ class LicenciasWeb extends HookWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Licencias Web'),
+        title: Text(
+          'Licencias Web',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
         centerTitle: true,
         actions: [
           IconButton(onPressed: () {}, icon: const Icon(Icons.search_rounded)),
@@ -77,6 +82,14 @@ class LicenciasWeb extends HookWidget {
               Navigator.pushNamed(context, '/reporte');
             },
           ),
+          SpeedDialChild(
+            elevation: 5,
+            child: Icon(Icons.logout),
+            label: 'Cerrar Sesión',
+            onTap: () {
+              authProvider.logOut(context);
+            },
+          ),
         ],
       ),
       body: ListView.builder(
@@ -85,55 +98,102 @@ class LicenciasWeb extends HookWidget {
           final item = arrLicencias.value[index];
           return Padding(
             padding: const EdgeInsets.all(8.0),
-            child: Slidable(
-              key: ValueKey('${item['id']}_${item['fecha_instalacion']}'),
-              endActionPane: ActionPane(
-                extentRatio: 0.2,
-                motion: const ScrollMotion(),
-                children: [
-                  SlidableAction(
-                    borderRadius: BorderRadius.circular(12),
-                    onPressed: (context) {
-                      Navigator.pushNamed(context, '/web', arguments: item);
-                    },
-                    flex: 2,
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.white,
-                    icon: Icons.edit_note_rounded,
-                    label: 'Editar',
-                  ),
-                ],
-              ),
-              child: Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
-                  color: Colors.white,
-                ),
-                padding: const EdgeInsets.all(15),
-                width: double.infinity,
-                child: Column(
-                  spacing: 5,
-                  crossAxisAlignment: CrossAxisAlignment.start,
+            child: GestureDetector(
+              onLongPress: () => _showPreviewDialog(context, item),
+              child: Slidable(
+                key: ValueKey('${item['id']}_${item['fecha_instalacion']}'),
+                endActionPane: ActionPane(
+                  extentRatio: 0.3,
+                  motion: const ScrollMotion(),
                   children: [
-                    Text(
-                      '${item['client_id'] ?? ''}'.toUpperCase(),
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
+                    CustomSlidableAction(
+                      borderRadius: BorderRadius.circular(12),
+                      onPressed: (context) {
+                        Navigator.pushNamed(context, '/web', arguments: item);
+                      },
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.edit_note_rounded, size: 35),
+                          Text('Editar'),
+                        ],
                       ),
                     ),
-                    Text(
-                      'Fecha de instalación: ${item['fecha_instalacion'] ?? ''}',
-                    ),
-                    Text('Fecha de pago: ${item['fecha_pago'] ?? ''}'),
-                    Text('Meses: ${item['meses'] ?? ''}'),
                   ],
+                ),
+                child: Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    color: Colors.white,
+                  ),
+                  padding: const EdgeInsets.all(15),
+                  width: double.infinity,
+                  child: Column(
+                    spacing: 5,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '${item['client_id'] ?? ''}'.toUpperCase(),
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                      Text(
+                        'Fecha de instalación: ${item['fecha_instalacion'] ?? ''}',
+                      ),
+                      Text('Fecha de pago: ${item['fecha_pago'] ?? ''}'),
+                      Text('Meses: ${item['meses'] ?? ''}'),
+                    ],
+                  ),
                 ),
               ),
             ),
           );
         },
       ),
+    );
+  }
+
+  void _showPreviewDialog(BuildContext context, Map<String, dynamic> item) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          backgroundColor: Colors.white,
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${item['client_id'] ?? ''}'.toUpperCase(),
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                SizedBox(height: 20),
+                Text(
+                  'Meses: ${item['meses'] ?? ''}',
+                  style: TextStyle(fontSize: 16),
+                ),
+                Text(
+                  'Fecha Instalación: ${item['fecha_instalacion'] ?? ''}',
+                  style: TextStyle(fontSize: 16),
+                ),
+                Text(
+                  'Fecha Pago: ${item['fecha_pago'] ?? ''}',
+                  style: TextStyle(fontSize: 16),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }

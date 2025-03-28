@@ -20,6 +20,8 @@ class AuthProvider with ChangeNotifier {
       if (response.statusCode == 200) {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('userToken', response.data['data']['token']);
+        await prefs.setString('username', username);
+        await prefs.setString('password', password);
 
         notifyListeners();
         return true;
@@ -37,7 +39,12 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
 
     if (context.mounted) {
-      Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+      Navigator.pushNamedAndRemoveUntil(
+        context,
+        '/login',
+        (route) => false,
+        arguments: {'useBiometric': true},
+      );
     }
   }
 }

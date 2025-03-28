@@ -15,14 +15,26 @@ class SplashScreen extends HookWidget {
 
       final prefs = await SharedPreferences.getInstance();
       String? token = prefs.getString('userToken');
+      String? username = prefs.getString('username');
+      String? password = prefs.getString('password');
       if (token != null && !isTokenExpired(token)) {
         if (context.mounted) {
           Navigator.pushReplacementNamed(context, '/home');
         }
       } else {
         await prefs.remove('userToken');
-        if (context.mounted) {
-          Navigator.pushReplacementNamed(context, '/login');
+        if (username != null && password != null) {
+          if (context.mounted) {
+            Navigator.pushReplacementNamed(
+              context,
+              '/login',
+              arguments: {'useBiometric': true},
+            );
+          }
+        } else {
+          if (context.mounted) {
+            Navigator.pushReplacementNamed(context, '/login');
+          }
         }
       }
       loadingProvider.hide();

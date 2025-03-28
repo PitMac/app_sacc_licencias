@@ -52,6 +52,8 @@ ThemeData themeData() {
     ),
     bottomNavigationBarTheme: BottomNavigationBarThemeData(
       selectedItemColor: AppColors.primary,
+      backgroundColor: Colors.white,
+      type: BottomNavigationBarType.fixed,
     ),
   );
 }
