@@ -1,11 +1,15 @@
+import 'dart:io';
+
 import 'package:app_sacc_licencias/providers/auth_provider.dart';
 import 'package:app_sacc_licencias/providers/loading_provider.dart';
+import 'package:app_sacc_licencias/providers/screen_provider.dart';
+import 'package:app_sacc_licencias/providers/theme_provider.dart';
 import 'package:app_sacc_licencias/utils/colors.dart';
 import 'package:app_sacc_licencias/widgets/alert_helper_widget.dart';
 import 'package:app_sacc_licencias/widgets/custom_button_widget.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
-import 'package:flutter_svg/svg.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -54,16 +58,42 @@ class LoginScreen extends HookWidget {
     loadingProvider.hide();
   }
 
+  Future<bool> _authenticateWithLinuxPassword() async {
+    try {
+      ProcessResult result = await Process.run('pkexec', [
+        'echo',
+        'Autenticado',
+      ]);
+
+      if (result.exitCode == 0) {
+        return true;
+      } else {
+        return false;
+      }
+    } catch (e) {
+      return false;
+    }
+  }
+
   Future<void> _authenticateBiometric(BuildContext context) async {
     final LocalAuthentication auth = LocalAuthentication();
-    bool canCheckBiometrics = await auth.canCheckBiometrics;
     bool authenticated = false;
 
-    if (canCheckBiometrics) {
-      authenticated = await auth.authenticate(
-        localizedReason: 'Autenticación con huella o Face ID',
-        options: AuthenticationOptions(biometricOnly: true),
-      );
+    if (Platform.isLinux) {
+      authenticated = await _authenticateWithLinuxPassword();
+    } else {
+      bool canCheckBiometrics = await auth.canCheckBiometrics;
+
+      if (canCheckBiometrics) {
+        try {
+          authenticated = await auth.authenticate(
+            localizedReason: 'Autenticación con huella o Face ID',
+            options: const AuthenticationOptions(biometricOnly: true),
+          );
+        } on PlatformException {
+          authenticated = false;
+        }
+      }
     }
 
     if (authenticated) {
@@ -71,10 +101,8 @@ class LoginScreen extends HookWidget {
       String? username = prefs.getString('username');
       String? password = prefs.getString('password');
 
-      if (username != null && password != null) {
-        if (context.mounted) {
-          logIn(context, username, password);
-        }
+      if (username != null && password != null && context.mounted) {
+        logIn(context, username, password);
       }
     }
   }
@@ -84,6 +112,9 @@ class LoginScreen extends HookWidget {
     final username = useTextEditingController();
     final password = useTextEditingController();
     final seePassword = useState(false);
+    final FocusNode usernameFocusNode = FocusNode();
+    final FocusNode passwordFocusNode = FocusNode();
+    final isDesktop = context.watch<ScreenProvider>().isDesktop;
 
     final Map<String, dynamic>? args =
         ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
@@ -92,55 +123,76 @@ class LoginScreen extends HookWidget {
     final useBiometricState = useState(useBiometric);
 
     return Scaffold(
-      body: Padding(
-        padding: const EdgeInsets.all(8.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Image.asset('assets/images/logo_empresa.png', height: 120),
-            const SizedBox(height: 50),
-            if (useBiometricState.value) ...[
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  _buildLoginCard(
-                    context,
-                    icon: Icons.fingerprint,
-                    label: "Huella/Face ID",
-                    onTap: () => _authenticateBiometric(context),
-                  ),
-                  _buildLoginCard(
-                    context,
-                    icon: Icons.keyboard,
-                    label: "Manual",
-                    onTap: () => useBiometricState.value = false,
-                  ),
-                ],
-              ),
-            ] else ...[
-              TextFormField(
-                controller: username,
-                decoration: InputDecoration(
-                  labelText: 'Usuario',
-                  hintText: 'Usuario',
+      body: Center(
+        child: Container(
+          width: isDesktop ? 400 : double.infinity,
+          padding: const EdgeInsets.all(8.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Image.asset('assets/images/logo_empresa.png', height: 120),
+              const SizedBox(height: 50),
+              if (useBiometricState.value) ...[
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    _buildLoginCard(
+                      context,
+                      icon: isDesktop ? Icons.password : Icons.fingerprint,
+                      label: isDesktop ? "Clave" : "Huella/Face ID",
+                      onTap: () => _authenticateBiometric(context),
+                    ),
+                    _buildLoginCard(
+                      context,
+                      icon: Icons.keyboard,
+                      label: "Manual",
+                      onTap: () => useBiometricState.value = false,
+                    ),
+                  ],
                 ),
-              ),
-              const SizedBox(height: 10),
-              TextFormField(
-                controller: password,
-                obscureText: !seePassword.value,
-                decoration: InputDecoration(
-                  labelText: 'Clave',
-                  hintText: 'Clave',
+              ] else ...[
+                KeyboardListener(
+                  focusNode: usernameFocusNode,
+                  onKeyEvent: (keyEvent) {
+                    if (keyEvent.logicalKey == LogicalKeyboardKey.enter ||
+                        keyEvent.logicalKey == LogicalKeyboardKey.numpadEnter) {
+                      passwordFocusNode.requestFocus();
+                    }
+                  },
+                  child: TextFormField(
+                    controller: username,
+                    decoration: InputDecoration(
+                      labelText: 'Usuario',
+                      hintText: 'Usuario',
+                    ),
+                  ),
                 ),
-              ),
-              SizedBox(height: 30),
-              customButton(
-                'Iniciar Sesión',
-                () => logIn(context, username.text, password.text),
-              ),
+                const SizedBox(height: 10),
+                KeyboardListener(
+                  focusNode: passwordFocusNode,
+                  onKeyEvent: (keyEvent) {
+                    if (keyEvent.logicalKey == LogicalKeyboardKey.enter ||
+                        keyEvent.logicalKey == LogicalKeyboardKey.numpadEnter) {
+                      logIn(context, username.text, password.text);
+                    }
+                  },
+                  child: TextFormField(
+                    controller: password,
+                    obscureText: !seePassword.value,
+                    decoration: InputDecoration(
+                      labelText: 'Clave',
+                      hintText: 'Clave',
+                    ),
+                  ),
+                ),
+                SizedBox(height: 30),
+                customButton(
+                  'Iniciar Sesión',
+                  () => logIn(context, username.text, password.text),
+                ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );
@@ -158,17 +210,17 @@ class LoginScreen extends HookWidget {
         elevation: 5,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
         child: Container(
-          width: 150, // Ajusta según necesites
+          width: 150,
           height: 120,
           padding: EdgeInsets.all(15),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(15),
-            color: Colors.white, // Fondo blanco
+            color: Theme.of(context).cardColor,
           ),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, size: 40, color: AppColors.primary), // Ícono grande
+              Icon(icon, size: 40, color: AppColors.primary),
               SizedBox(height: 10),
               Text(
                 label,

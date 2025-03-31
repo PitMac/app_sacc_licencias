@@ -1,6 +1,34 @@
 import 'package:app_sacc_licencias/utils/colors.dart';
 import 'package:flutter/material.dart';
 
+ThemeData darkTheme() {
+  return ThemeData.dark().copyWith(
+    appBarTheme: AppBarTheme(
+      surfaceTintColor: Colors.transparent,
+      elevation: 0,
+    ),
+    floatingActionButtonTheme: FloatingActionButtonThemeData(
+      backgroundColor: AppColors.primary,
+      foregroundColor: Colors.white,
+    ),
+    inputDecorationTheme: InputDecorationTheme(
+      filled: true,
+      focusedBorder: OutlineInputBorder(
+        borderSide: BorderSide(color: AppColors.primary, width: 2.0),
+      ),
+      floatingLabelStyle: TextStyle(
+        color: AppColors.primary,
+        fontWeight: FontWeight.w500,
+      ),
+      border: OutlineInputBorder(),
+    ),
+    bottomNavigationBarTheme: BottomNavigationBarThemeData(
+      selectedItemColor: AppColors.primary,
+      type: BottomNavigationBarType.fixed,
+    ),
+  );
+}
+
 ThemeData themeData() {
   return ThemeData(
     appBarTheme: AppBarTheme(

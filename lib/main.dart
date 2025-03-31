@@ -1,5 +1,7 @@
 import 'package:app_sacc_licencias/providers/auth_provider.dart';
 import 'package:app_sacc_licencias/providers/loading_provider.dart';
+import 'package:app_sacc_licencias/providers/screen_provider.dart';
+import 'package:app_sacc_licencias/providers/theme_provider.dart';
 import 'package:app_sacc_licencias/screens/form_movil_screen.dart';
 import 'package:app_sacc_licencias/screens/form_web_screen.dart';
 import 'package:app_sacc_licencias/screens/home_screen.dart';
@@ -17,6 +19,8 @@ void main() async {
       providers: [
         ChangeNotifierProvider(create: (_) => LoadingProvider()),
         ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProvider(create: (_) => ScreenProvider()),
+        ChangeNotifierProvider(create: (_) => ThemeProvider()),
       ],
       child: MyApp(),
     ),
@@ -28,21 +32,38 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Licencia App',
-      debugShowCheckedModeBanner: false,
-      theme: themeData(),
-      initialRoute: '/',
-      routes: {
-        '/': (context) => SplashScreen(),
-        '/login': (context) => LoginScreen(),
-        '/home': (context) => HomeScreen(),
-        '/web': (context) => FormWebScreen(),
-        '/movil': (context) => FormMovilScreen(),
-        '/reporte': (context) => ReporteScreen(),
-      },
-      builder: (context, child) {
-        return Stack(children: [child!, GlobalLoadingWidget()]);
+    return LayoutBuilder(
+      builder: (context, cons) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          Provider.of<ScreenProvider>(
+            context,
+            listen: false,
+          ).updateScreenSize(cons.maxWidth);
+        });
+
+        return Consumer<ThemeProvider>(
+          builder: (context, themeProvider, child) {
+            return MaterialApp(
+              title: 'Licencia App',
+              debugShowCheckedModeBanner: false,
+              theme: themeData(),
+              darkTheme: darkTheme(),
+              themeMode: themeProvider.currentTheme,
+              initialRoute: '/',
+              routes: {
+                '/': (context) => SplashScreen(),
+                '/login': (context) => LoginScreen(),
+                '/home': (context) => HomeScreen(),
+                '/web': (context) => FormWebScreen(),
+                '/movil': (context) => FormMovilScreen(),
+                '/reporte': (context) => ReporteScreen(),
+              },
+              builder: (context, child) {
+                return Stack(children: [child!, GlobalLoadingWidget()]);
+              },
+            );
+          },
+        );
       },
     );
   }
